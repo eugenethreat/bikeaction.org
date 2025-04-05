@@ -959,17 +959,6 @@ class UserAdmin(BaseUserAdmin):
     readonly_fields = ["profile"]
 
 
-class DoNotEmailAdmin(admin.ModelAdmin):
-    list_display = ["email", "reason", "created_at"]
-    list_filter = ["reason", "created_at"]
-    search_fields = ["email"]
-    readonly_fields = ["created_at"]
-    list_display = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
-    list_filter = [
-        DistrictOrganizerUserFilter,
-    ] + list(BaseUserAdmin.list_filter)
-
-
 class OrganizerUserAdmin(UserAdmin):
     list_display = ["email", "first_name", "last_name"]
 
@@ -989,6 +978,17 @@ class OrganizerUserAdmin(UserAdmin):
             q_objects |= Q(profile__location__within=district.mpoly)
         qs = qs.filter(q_objects)
         return qs
+
+
+class DoNotEmailAdmin(admin.ModelAdmin):
+    list_display = ["email", "reason", "created_at"]
+    list_filter = ["reason", "created_at"]
+    search_fields = ["email"]
+    readonly_fields = ["created_at"]
+    list_display = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
+    list_filter = [
+        DistrictOrganizerUserFilter,
+    ] + list(BaseUserAdmin.list_filter)
 
 
 admin.site.unregister(User)
