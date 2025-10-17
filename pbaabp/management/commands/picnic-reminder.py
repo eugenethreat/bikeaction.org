@@ -21,7 +21,7 @@ class Command(BaseCommand):
         for rsvp in RSVPs:
             if rsvp.user and rsvp.user.email not in SENT:
                 send_email_message(
-                    "picnic-postponement",
+                    "picnic-reminder",
                     "Philly Bike Action <noreply@bikeaction.org>",
                     [rsvp.user.email],
                     {"first_name": rsvp.user.first_name},
@@ -30,7 +30,7 @@ class Command(BaseCommand):
                 SENT.append(rsvp.user.email)
             elif rsvp.email and rsvp.email not in SENT:
                 send_email_message(
-                    "picnic-postponement",
+                    "picnic-reminder",
                     "Philly Bike Action <noreply@bikeaction.org>",
                     [rsvp.email],
                     {"first_name": rsvp.first_name},
