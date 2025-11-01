@@ -1,4 +1,4 @@
-celerybeat-schedule
+celerybeat-schedule*
 db.sqlite3
 venv
 .env

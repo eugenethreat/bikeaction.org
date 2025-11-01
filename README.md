@@ -3,7 +3,7 @@
 ## Getting Started
 
 First you'll want to ensure that you have created a
-[fork](https://github.com/PhillyBikeAction/apps/fork)
+[fork](https://github.com/PhillyBikeAction/bikeaction.org/fork)
 of this repo in your own GitHub account.
 This will allow you to push your changes to GitHub so that they can be shared with the main
 repository via Pull Request.
