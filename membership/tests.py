@@ -1,6 +1,7 @@
 import csv
 import datetime
 import os
+import tempfile
 import uuid
 from io import StringIO
 
@@ -165,9 +166,9 @@ class ExportVoterListCommandTestCase(TestCase):
             end_date=None,
         )
 
-        # Export
-        output_file = "test_export_membership.csv"
-        try:
+        # Export to temp directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_membership.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV
@@ -180,9 +181,6 @@ class ExportVoterListCommandTestCase(TestCase):
             self.assertEqual(rows[0]["full_name"], "Alice Smith")
             # Verify password is literal "password,"
             self.assertEqual(rows[0]["password"], "password,")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_with_discord_activity(self):
         """Test exporting users with Discord activity"""
@@ -192,8 +190,8 @@ class ExportVoterListCommandTestCase(TestCase):
         self._create_discord_activity(self.user2, days_ago=10)
 
         # Export
-        output_file = "test_export_discord.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_discord.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV
@@ -204,9 +202,6 @@ class ExportVoterListCommandTestCase(TestCase):
             self.assertTrue(rows[0]["unique_id"].startswith("d7-"))
             uuid.UUID(rows[0]["unique_id"].split("-", 1)[1])  # Verify UUID part
             self.assertEqual(rows[0]["full_name"], "Bob Jones")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_with_stripe_subscription(self):
         """Test exporting users with active Stripe subscriptions"""
@@ -216,17 +211,14 @@ class ExportVoterListCommandTestCase(TestCase):
         self._create_stripe_subscription(self.user1)
 
         # Export
-        output_file = "test_export_stripe.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_stripe.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV
             rows = self._read_csv(output_file)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["email"], "member1@example.com")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_user_without_district(self):
         """Test exporting user without district uses d0"""
@@ -241,8 +233,8 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_no_district.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_no_district.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV
@@ -251,9 +243,6 @@ class ExportVoterListCommandTestCase(TestCase):
             # Verify unique_id format: d0-{UUID}
             self.assertTrue(rows[0]["unique_id"].startswith("d0-"))
             uuid.UUID(rows[0]["unique_id"].split("-", 1)[1])  # Verify UUID part
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_user_with_zip_code_only(self):
         """Test inferring district from zip code when no location is set"""
@@ -296,8 +285,8 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_zip_inference.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_zip_inference.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV - should infer District 5 from zip code
@@ -307,9 +296,6 @@ class ExportVoterListCommandTestCase(TestCase):
             # Should have inferred district 5 from zip code 19103
             self.assertTrue(rows[0]["unique_id"].startswith("d5-"))
             uuid.UUID(rows[0]["unique_id"].split("-", 1)[1])  # Verify UUID part
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_user_with_zip_code_no_match(self):
         """Test user with zip code that doesn't match any district uses d0"""
@@ -334,8 +320,8 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_unknown_zip.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_unknown_zip.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV - should use d0 since zip doesn't exist
@@ -344,9 +330,6 @@ class ExportVoterListCommandTestCase(TestCase):
             # Should use d0 prefix with UUID
             self.assertTrue(rows[0]["unique_id"].startswith("d0-"))
             uuid.UUID(rows[0]["unique_id"].split("-", 1)[1])  # Verify UUID part
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_multiple_members(self):
         """Test exporting multiple members with different membership types"""
@@ -367,8 +350,8 @@ class ExportVoterListCommandTestCase(TestCase):
         self._create_stripe_subscription(self.user3)
 
         # Export
-        output_file = "test_export_multiple.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_multiple.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify CSV
@@ -380,9 +363,6 @@ class ExportVoterListCommandTestCase(TestCase):
                 emails,
                 {"member1@example.com", "member2@example.com", "member3@example.com"},
             )
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_export_date_filtering(self):
         """Test that date filtering works correctly"""
@@ -405,20 +385,17 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_date_filter.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_date_filter.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Verify only user2 is exported
             rows = self._read_csv(output_file)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["email"], "member2@example.com")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
-    def test_export_kind_filter_fiscal(self):
-        """Test filtering by fiscal membership kind"""
+    def test_export_all_membership_types(self):
+        """Test exporting all membership types (no filtering)"""
         now = timezone.now().date()
 
         # Create fiscal membership
@@ -437,91 +414,16 @@ class ExportVoterListCommandTestCase(TestCase):
             end_date=None,
         )
 
-        # Export with fiscal filter
-        output_file = "test_export_fiscal.csv"
-        try:
-            call_command("export_voter_list", now.isoformat(), output=output_file, kind="fiscal")
+        # Export - should include both types
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_all_types.csv")
+            call_command("export_voter_list", now.isoformat(), output=output_file)
 
-            # Verify only fiscal member is exported
+            # Verify both members are exported
             rows = self._read_csv(output_file)
-            self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["email"], "member1@example.com")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-
-    def test_export_kind_filter_participation(self):
-        """Test filtering by participation membership kind"""
-        now = timezone.now().date()
-
-        # Create fiscal membership
-        Membership.objects.create(
-            user=self.user1,
-            kind=Membership.Kind.FISCAL,
-            start_date=now - datetime.timedelta(days=30),
-            end_date=None,
-        )
-
-        # Create participation membership
-        Membership.objects.create(
-            user=self.user2,
-            kind=Membership.Kind.PARTICIPATION,
-            start_date=now - datetime.timedelta(days=30),
-            end_date=None,
-        )
-
-        # Export with participation filter
-        output_file = "test_export_participation.csv"
-        try:
-            call_command(
-                "export_voter_list",
-                now.isoformat(),
-                output=output_file,
-                kind="participation",
-            )
-
-            # Verify only participation member is exported
-            rows = self._read_csv(output_file)
-            self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["email"], "member2@example.com")
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-
-    def test_export_kind_filter_does_not_affect_discord_stripe(self):
-        """Test that kind filter doesn't exclude Discord/Stripe members"""
-        now = timezone.now().date()
-
-        # Create fiscal membership for user1
-        Membership.objects.create(
-            user=self.user1,
-            kind=Membership.Kind.FISCAL,
-            start_date=now - datetime.timedelta(days=30),
-            end_date=None,
-        )
-
-        # Create Discord activity for user2 (no explicit membership)
-        self._create_discord_activity(self.user2, days_ago=5)
-
-        # Export with participation filter
-        output_file = "test_export_kind_discord.csv"
-        try:
-            call_command(
-                "export_voter_list",
-                now.isoformat(),
-                output=output_file,
-                kind="participation",
-            )
-
-            # Verify Discord member is still exported (kind filter doesn't apply)
-            rows = self._read_csv(output_file)
+            self.assertEqual(len(rows), 2)
             emails = {row["email"] for row in rows}
-            self.assertIn("member2@example.com", emails)
-            # Fiscal member should NOT be exported
-            self.assertNotIn("member1@example.com", emails)
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
+            self.assertEqual(emails, {"member1@example.com", "member2@example.com"})
 
     def test_csv_format(self):
         """Test CSV output has correct format and headers"""
@@ -536,8 +438,8 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_format.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_format.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             # Read CSV
@@ -561,9 +463,6 @@ class ExportVoterListCommandTestCase(TestCase):
             uuid.UUID(uuid_part)
             # email should be valid
             self.assertIn("@", row["email"])
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_unique_id_uniqueness(self):
         """Test that each member gets a unique unique_id"""
@@ -584,8 +483,8 @@ class ExportVoterListCommandTestCase(TestCase):
         )
 
         # Export
-        output_file = "test_export_unique_ids.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_unique_ids.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             rows = self._read_csv(output_file)
@@ -603,9 +502,6 @@ class ExportVoterListCommandTestCase(TestCase):
             for unique_id in unique_ids:
                 uuid_part = unique_id.split("-", 1)[1]
                 uuid.UUID(uuid_part)
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_discord_activity_30_day_window(self):
         """Test that Discord activity respects 30-day window"""
@@ -618,8 +514,8 @@ class ExportVoterListCommandTestCase(TestCase):
         self._create_discord_activity(self.user2, days_ago=31)
 
         # Export
-        output_file = "test_export_discord_window.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_discord_window.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             rows = self._read_csv(output_file)
@@ -628,9 +524,6 @@ class ExportVoterListCommandTestCase(TestCase):
             # Only user1 should be exported
             self.assertIn("member1@example.com", emails)
             self.assertNotIn("member2@example.com", emails)
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_no_duplicate_users(self):
         """Test that users with multiple membership criteria aren't duplicated"""
@@ -647,8 +540,8 @@ class ExportVoterListCommandTestCase(TestCase):
         self._create_stripe_subscription(self.user1)
 
         # Export
-        output_file = "test_export_no_dupes.csv"
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = os.path.join(tmpdir, "test_export_no_dupes.csv")
             call_command("export_voter_list", now.isoformat(), output=output_file)
 
             rows = self._read_csv(output_file)
@@ -656,9 +549,6 @@ class ExportVoterListCommandTestCase(TestCase):
 
             # Should only have one entry for user1
             self.assertEqual(emails.count("member1@example.com"), 1)
-        finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
 
     def test_invalid_date_format(self):
         """Test that invalid date format raises error"""
@@ -691,11 +581,14 @@ class ExportVoterListCommandTestCase(TestCase):
             end_date=None,
         )
 
-        try:
-            call_command("export_voter_list", now.isoformat())
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Change to temp directory to test default filename
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                call_command("export_voter_list", now.isoformat())
 
-            # Should create voter_list.csv
-            self.assertTrue(os.path.exists("voter_list.csv"))
-        finally:
-            if os.path.exists("voter_list.csv"):
-                os.remove("voter_list.csv")
+                # Should create voter_list.csv
+                self.assertTrue(os.path.exists("voter_list.csv"))
+            finally:
+                os.chdir(original_cwd)

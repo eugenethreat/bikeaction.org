@@ -76,9 +76,11 @@ class Election(models.Model):
 
         # Use the deadline as a single point in time (already a timezone-aware datetime)
         deadline = self.membership_eligibility_deadline
+        deadline_date = deadline.date()
 
         # Calculate Discord activity window (30 days before deadline)
-        discord_start = deadline - timedelta(days=30)
+        # Use date arithmetic to avoid timezone conversion issues
+        discord_start_date = deadline_date - timedelta(days=30)
 
         # Build query for users who were members as of the deadline
         # 1. Explicit Membership record active on deadline
@@ -88,9 +90,10 @@ class Election(models.Model):
 
         # 2. Discord activity within 30 days before deadline
         # User must have BOTH a linked Discord account AND recent activity
+        # Use date comparison since DiscordActivity.date is a DateField
         discord_activity_query = Q(socialaccount__provider="discord") & Q(
-            profile__discord_activity__date__gte=discord_start,
-            profile__discord_activity__date__lte=deadline,
+            profile__discord_activity__date__gte=discord_start_date,
+            profile__discord_activity__date__lte=deadline_date,
         )
 
         # 3. Stripe subscription active as of deadline

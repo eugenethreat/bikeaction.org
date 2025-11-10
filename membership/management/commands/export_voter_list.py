@@ -34,16 +34,6 @@ class Command(BaseCommand):
             default="voter_list.csv",
             help="Output CSV file path (default: voter_list.csv)",
         )
-        parser.add_argument(
-            "--kind",
-            type=str,
-            choices=["fiscal", "participation", "all"],
-            default="all",
-            help=(
-                "Filter by membership kind for users with explicit Membership records "
-                "(default: all). Note: This filter does not apply to Discord or Stripe members."
-            ),
-        )
 
     def handle(self, *args, **options):
         # Parse the date
@@ -69,10 +59,10 @@ class Command(BaseCommand):
             return
 
         output_file = options["output"]
-        kind_filter = options["kind"]
 
         # Calculate Discord activity window (30 days before target date)
-        discord_activity_start = day_start_utc - timedelta(days=30)
+        # Use date arithmetic to avoid timezone conversion issues
+        discord_activity_start_date = date_obj - timedelta(days=30)
 
         # Build query to find all users who are members as of the given date
         # A user is a member if they meet ANY of these criteria:
@@ -87,17 +77,12 @@ class Command(BaseCommand):
             Q(memberships__end_date__isnull=True) | Q(memberships__end_date__gte=day_start_utc)
         )
 
-        # Apply kind filter to membership records if specified
-        if kind_filter == "fiscal":
-            membership_record_query &= Q(memberships__kind=Membership.Kind.FISCAL)
-        elif kind_filter == "participation":
-            membership_record_query &= Q(memberships__kind=Membership.Kind.PARTICIPATION)
-
         # Discord activity within 30 days before target date
         # User must have BOTH a linked Discord account AND recent activity
+        # Use date comparison since DiscordActivity.date is a DateField
         discord_activity_query = Q(socialaccount__provider="discord") & Q(
-            profile__discord_activity__date__gte=discord_activity_start,
-            profile__discord_activity__date__lte=day_end_utc,
+            profile__discord_activity__date__gte=discord_activity_start_date,
+            profile__discord_activity__date__lte=date_obj,
         )
 
         # Stripe subscription active on target date
@@ -142,13 +127,13 @@ class Command(BaseCommand):
 
         total_discord_activities = DiscordActivity.objects.count()
         activities_in_window = DiscordActivity.objects.filter(
-            date__gte=discord_activity_start,
-            date__lte=day_end_utc,
+            date__gte=discord_activity_start_date,
+            date__lte=date_obj,
         ).count()
         unique_discord_users = (
             DiscordActivity.objects.filter(
-                date__gte=discord_activity_start,
-                date__lte=day_end_utc,
+                date__gte=discord_activity_start_date,
+                date__lte=date_obj,
             )
             .values("profile__user")
             .distinct()
@@ -158,7 +143,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("\nDiscord Debug Info:"))
         self.stdout.write(f"  - Total Discord activities in DB: {total_discord_activities}")
         self.stdout.write(
-            f"  - Activities in window ({discord_activity_start.date()} to {date_obj}): "
+            f"  - Activities in window ({discord_activity_start_date} to {date_obj}): "
             f"{activities_in_window}"
         )
         self.stdout.write(f"  - Unique users with activity: {unique_discord_users}")

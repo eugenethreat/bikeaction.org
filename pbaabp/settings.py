@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import environ
@@ -266,10 +267,18 @@ STATICFILES_DIRS = [
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Detect if we're running tests
+TESTING = "test" in sys.argv
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Use simpler storage during tests to avoid manifest requirement
+        "BACKEND": (
+            "whitenoise.storage.CompressedStaticFilesStorage"
+            if TESTING
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 
