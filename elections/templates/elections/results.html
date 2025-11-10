@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-header">
+  <h1>{{ election.title }} - Results</h1>
+
+  <div style="text-align: left;">
+    <p>
+      <b>Voting closed:</b> {{ election.voting_closes|date:"F j, Y g:i A" }}
+    </p>
+    <p>
+      <b>Total ballots cast:</b> {{ total_ballots }}
+    </p>
+  </div>
+</div>
+
+<div class="form-container">
+  <h2>District-Reserved Seats</h2>
+  <p style="margin-bottom: 1.5rem;">
+    One seat per district (1-10), allocated to candidates from that district who received at least
+    {{ election.district_seat_min_votes }} votes from district members.
+  </p>
+
+  {% if district_seats %}
+  <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+    {% for district_num, nominee, votes in district_seats %}
+    <div style="padding: 1rem; border: 2px solid #28a745; border-radius: 4px; background-color: #f8fff9;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: bold; font-size: 1.1rem;">
+            District {{ district_num }}: {{ nominee.get_display_name }}
+          </div>
+          <div style="color: #666; margin-top: 0.25rem;">
+            {{ votes }} vote{{ votes|pluralize }} from District {{ district_num }} members
+          </div>
+        </div>
+        <div style="background-color: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold;">
+          WINNER
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: #666; margin-bottom: 2rem;">No district seats were allocated.</p>
+  {% endif %}
+
+  <h2>At-Large Seats</h2>
+  <p style="margin-bottom: 1.5rem;">
+    {{ election.at_large_seats_count }} seats allocated to top vote-getters (excluding district seat winners).
+  </p>
+
+  {% if at_large_seats %}
+  <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+    {% for nominee, votes in at_large_seats %}
+    <div style="padding: 1rem; border: 2px solid #007bff; border-radius: 4px; background-color: #f0f8ff;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: bold; font-size: 1.1rem;">
+            {{ nominee.get_display_name }}
+            {% if nominee.user.profile.district %}
+            <span style="color: #666; font-weight: normal;">({{ nominee.user.profile.district.name }})</span>
+            {% endif %}
+          </div>
+          <div style="color: #666; margin-top: 0.25rem;">
+            {{ votes }} total vote{{ votes|pluralize }}
+          </div>
+        </div>
+        <div style="background-color: #007bff; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-weight: bold;">
+          WINNER
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: #666; margin-bottom: 2rem;">No at-large seats were allocated.</p>
+  {% endif %}
+
+  {% if question_results %}
+  <h2>Question Results</h2>
+  <div style="display: grid; gap: 1.5rem;">
+    {% for question, yes_count, no_count in question_results %}
+    <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">
+      <div style="font-weight: bold; margin-bottom: 1rem;">{{ question.question_text }}</div>
+      {% widthratio yes_count yes_count|add:no_count 100 as yes_percent %}
+      {% widthratio no_count yes_count|add:no_count 100 as no_percent %}
+      <div style="display: flex; gap: 2rem; align-items: center;">
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span><b>Yes:</b> {{ yes_count }} vote{{ yes_count|pluralize }}</span>
+            <span>{{ yes_percent }}%</span>
+          </div>
+          <div style="background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 24px;">
+            <div style="background-color: #28a745; height: 100%; width: {{ yes_percent }}%;"></div>
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span><b>No:</b> {{ no_count }} vote{{ no_count|pluralize }}</span>
+            <span>{{ no_percent }}%</span>
+          </div>
+          <div style="background-color: #e9ecef; border-radius: 4px; overflow: hidden; height: 24px;">
+            <div style="background-color: #dc3545; height: 100%; width: {{ no_percent }}%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top: 2rem;">
+    <a href="{% url 'profile' %}" class="submit-button">Return to Profile</a>
+  </div>
+</div>
+{% endblock %}

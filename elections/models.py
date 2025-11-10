@@ -32,6 +32,17 @@ class Election(models.Model):
     voting_opens = models.DateTimeField(help_text="When voting opens")
     voting_closes = models.DateTimeField(help_text="When voting closes")
 
+    # District seat configuration
+    at_large_seats_count = models.IntegerField(default=5, help_text="Number of at-large seats")
+    district_seat_min_votes = models.IntegerField(
+        default=5,
+        help_text="Minimum votes from district members required to win district seat",
+    )
+    district_seat_min_voters = models.IntegerField(
+        default=5,
+        help_text="Minimum voters in a district required to activate that district's seat",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -313,3 +324,93 @@ class Nomination(models.Model):
         # Send email notification for new non-draft nominations (but skip self-nominations)
         if not self.draft and (is_new or was_draft) and not is_self_nomination:
             self.nominee.send_notification_email(self)
+
+
+class Question(models.Model):
+    """
+    Represents a yes/no question attached to an election ballot.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    election = models.ForeignKey(Election, on_delete=models.CASCADE, related_name="questions")
+    question_text = models.TextField(help_text="The question to ask voters")
+    description = models.TextField(
+        blank=True, default="", help_text="Optional description or context for the question"
+    )
+    order = models.IntegerField(default=0, help_text="Display order (lower numbers appear first)")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+        unique_together = ("election", "order")
+
+    def __str__(self):
+        return f"{self.election.title}: {self.question_text[:50]}"
+
+
+class Ballot(models.Model):
+    """
+    Represents a user's ballot for an election.
+    Contains all votes for candidates and questions.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    election = models.ForeignKey(Election, on_delete=models.CASCADE, related_name="ballots")
+    voter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="ballots")
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("election", "voter")
+        ordering = ["-submitted_at"]
+
+    def __str__(self):
+        voter_name = self.voter.get_full_name() or self.voter.email
+        return f"{voter_name}'s ballot for {self.election.title}"
+
+    def get_candidate_votes(self):
+        """Return QuerySet of all candidate votes on this ballot."""
+        return self.candidate_votes.select_related("nominee__user")
+
+    def get_question_votes(self):
+        """Return QuerySet of all question votes on this ballot."""
+        return self.question_votes.select_related("question")
+
+
+class Vote(models.Model):
+    """
+    Represents an approval vote for a candidate on a ballot.
+    """
+
+    ballot = models.ForeignKey(Ballot, on_delete=models.CASCADE, related_name="candidate_votes")
+    nominee = models.ForeignKey(Nominee, on_delete=models.CASCADE, related_name="votes")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("ballot", "nominee")
+
+    def __str__(self):
+        return f"Vote for {self.nominee.get_display_name()} on ballot {self.ballot.id}"
+
+
+class QuestionVote(models.Model):
+    """
+    Represents a yes/no vote on a ballot question.
+    """
+
+    ballot = models.ForeignKey(Ballot, on_delete=models.CASCADE, related_name="question_votes")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="votes")
+    answer = models.BooleanField(help_text="True = Yes, False = No")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("ballot", "question")
+
+    def __str__(self):
+        answer_text = "Yes" if self.answer else "No"
+        return f"{answer_text} on question {self.question.id}"

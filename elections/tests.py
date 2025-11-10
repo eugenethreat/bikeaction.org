@@ -866,3 +866,338 @@ class PIIProtectionTests(TestCase):
 
         # Nominator's email should never appear (user's own email in profile section is OK)
         self.assertNotIn("nominator@example.com", content)
+
+
+class VotingTests(TestCase):
+    """Test voting functionality."""
+
+    def setUp(self):
+        """Create test users, election, and nominees."""
+        from profiles.models import Profile
+
+        # Create eligible voter
+        self.voter = User.objects.create_user(
+            username="voter",
+            email="voter@test.com",
+            first_name="Voter",
+            last_name="Smith",
+        )
+        # Profile complete requires street_address and zip_code
+        Profile.objects.create(user=self.voter, street_address="123 Main St", zip_code="19123")
+
+        # Create nominees
+        self.nominee1 = User.objects.create_user(
+            username="nominee1",
+            email="nominee1@test.com",
+            first_name="Nominee",
+            last_name="One",
+        )
+        Profile.objects.create(user=self.nominee1, street_address="456 Oak St", zip_code="19123")
+
+        self.nominee2 = User.objects.create_user(
+            username="nominee2",
+            email="nominee2@test.com",
+            first_name="Nominee",
+            last_name="Two",
+        )
+        Profile.objects.create(user=self.nominee2, street_address="789 Elm St", zip_code="19123")
+
+        # Create election with voting currently open
+        now = timezone.now()
+        self.election = Election.objects.create(
+            title="Test Election 2025",
+            description="Test election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=14),
+            nominations_close=now - timedelta(days=7),
+            voting_opens=now - timedelta(days=1),
+            voting_closes=now + timedelta(days=7),
+        )
+
+        # Create nominee records with accepted nominations
+        self.nominee_record1 = Nominee.objects.create(election=self.election, user=self.nominee1)
+        Nomination.objects.create(
+            nominee=self.nominee_record1,
+            nominator=self.voter,
+            acceptance_status=Nomination.AcceptanceStatus.ACCEPTED,
+        )
+
+        self.nominee_record2 = Nominee.objects.create(election=self.election, user=self.nominee2)
+        Nomination.objects.create(
+            nominee=self.nominee_record2,
+            nominator=self.voter,
+            acceptance_status=Nomination.AcceptanceStatus.ACCEPTED,
+        )
+
+        # Create question
+        from elections.models import Question
+
+        self.question = Question.objects.create(
+            election=self.election,
+            question_text="Should we do the thing?",
+            order=1,
+        )
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_eligible_voter_can_vote(self, mock_eligible):
+        """Eligible voters should be able to cast ballots."""
+        # Mock eligibility check
+        mock_eligible.return_value = [self.voter.profile]
+
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_vote", kwargs={"election_slug": self.election.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Election 2025")
+        self.assertContains(response, self.nominee1.first_name)
+        self.assertContains(response, self.nominee2.first_name)
+        self.assertContains(response, "Should we do the thing?")
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_ballot_submission(self, mock_eligible):
+        """Voters should be able to submit ballots."""
+        from elections.models import Ballot, QuestionVote, Vote
+
+        mock_eligible.return_value = [self.voter.profile]
+        self.client.force_login(self.voter)
+
+        # Submit ballot
+        response = self.client.post(
+            reverse("election_vote", kwargs={"election_slug": self.election.slug}),
+            {
+                "nominees": [str(self.nominee_record1.id)],
+                f"question_{self.question.id}": "yes",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)  # Redirect after success
+
+        # Check ballot was created
+        ballot = Ballot.objects.get(election=self.election, voter=self.voter)
+        self.assertIsNotNone(ballot)
+
+        # Check votes were recorded
+        votes = Vote.objects.filter(ballot=ballot)
+        self.assertEqual(votes.count(), 1)
+        self.assertEqual(votes.first().nominee, self.nominee_record1)
+
+        # Check question vote
+        question_votes = QuestionVote.objects.filter(ballot=ballot)
+        self.assertEqual(question_votes.count(), 1)
+        self.assertEqual(question_votes.first().answer, True)
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_ballot_can_be_updated(self, mock_eligible):
+        """Voters should be able to change their votes."""
+        from elections.models import Ballot, Vote
+
+        mock_eligible.return_value = [self.voter.profile]
+        self.client.force_login(self.voter)
+
+        # Submit initial ballot
+        self.client.post(
+            reverse("election_vote", kwargs={"election_slug": self.election.slug}),
+            {
+                "nominees": [str(self.nominee_record1.id)],
+                f"question_{self.question.id}": "yes",
+            },
+        )
+
+        # Update ballot
+        response = self.client.post(
+            reverse("election_vote", kwargs={"election_slug": self.election.slug}),
+            {
+                "nominees": [str(self.nominee_record2.id)],
+                f"question_{self.question.id}": "no",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        # Check only one ballot exists
+        ballots = Ballot.objects.filter(election=self.election, voter=self.voter)
+        self.assertEqual(ballots.count(), 1)
+
+        # Check votes were updated
+        votes = Vote.objects.filter(ballot=ballots.first())
+        self.assertEqual(votes.count(), 1)
+        self.assertEqual(votes.first().nominee, self.nominee_record2)
+
+    def test_voting_not_open_yet(self):
+        """Users should not be able to vote before voting opens."""
+        # Create election with voting not yet open
+        now = timezone.now()
+        future_election = Election.objects.create(
+            title="Future Election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=14),
+            nominations_close=now - timedelta(days=7),
+            voting_opens=now + timedelta(days=7),
+            voting_closes=now + timedelta(days=14),
+        )
+
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_vote", kwargs={"election_slug": future_election.slug})
+        )
+
+        # Should redirect with error
+        self.assertEqual(response.status_code, 302)
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_staff_can_preview_before_voting_opens(self, mock_eligible):
+        """Staff users should be able to preview the voting booth before voting opens."""
+        # Create election with voting not yet open
+        now = timezone.now()
+        future_election = Election.objects.create(
+            title="Future Election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=14),
+            nominations_close=now - timedelta(days=7),
+            voting_opens=now + timedelta(days=7),
+            voting_closes=now + timedelta(days=14),
+        )
+
+        # Create nominee for this election
+        nominee_record = Nominee.objects.create(election=future_election, user=self.nominee1)
+        Nomination.objects.create(
+            nominee=nominee_record,
+            nominator=self.voter,
+            acceptance_status=Nomination.AcceptanceStatus.ACCEPTED,
+        )
+
+        # Mock eligibility check
+        mock_eligible.return_value = [self.voter.profile]
+
+        # Make voter a staff user
+        self.voter.is_staff = True
+        self.voter.save()
+
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_vote", kwargs={"election_slug": future_election.slug})
+            + "?preview=true"
+        )
+
+        # Should show the voting page
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Preview Mode")
+        self.assertContains(response, "Future Election")
+        self.assertContains(response, self.nominee1.first_name)
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_preview_mode_does_not_save_ballots(self, mock_eligible):
+        """Preview mode should not save ballots to the database."""
+        from elections.models import Ballot
+
+        # Create election with voting not yet open
+        now = timezone.now()
+        future_election = Election.objects.create(
+            title="Future Election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=14),
+            nominations_close=now - timedelta(days=7),
+            voting_opens=now + timedelta(days=7),
+            voting_closes=now + timedelta(days=14),
+        )
+
+        # Create nominee for this election
+        nominee_record = Nominee.objects.create(election=future_election, user=self.nominee1)
+        Nomination.objects.create(
+            nominee=nominee_record,
+            nominator=self.voter,
+            acceptance_status=Nomination.AcceptanceStatus.ACCEPTED,
+        )
+
+        # Mock eligibility check
+        mock_eligible.return_value = [self.voter.profile]
+
+        # Make voter a staff user
+        self.voter.is_staff = True
+        self.voter.save()
+
+        self.client.force_login(self.voter)
+
+        # Submit a ballot in preview mode
+        response = self.client.post(
+            reverse("election_vote", kwargs={"election_slug": future_election.slug})
+            + "?preview=true",
+            {
+                "nominees": [str(nominee_record.id)],
+            },
+        )
+
+        # Should not create a ballot
+        self.assertEqual(Ballot.objects.filter(election=future_election).count(), 0)
+        # Should redirect back to preview
+        self.assertEqual(response.status_code, 302)
+
+    @patch("elections.models.Election.get_eligible_voters")
+    def test_eligible_voters_can_preview(self, mock_eligible):
+        """Eligible voters should be able to use preview mode."""
+        # Create election with voting not yet open
+        now = timezone.now()
+        future_election = Election.objects.create(
+            title="Future Election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=14),
+            nominations_close=now - timedelta(days=7),
+            voting_opens=now + timedelta(days=7),
+            voting_closes=now + timedelta(days=14),
+        )
+
+        # Create nominee for this election
+        nominee_record = Nominee.objects.create(election=future_election, user=self.nominee1)
+        Nomination.objects.create(
+            nominee=nominee_record,
+            nominator=self.voter,
+            acceptance_status=Nomination.AcceptanceStatus.ACCEPTED,
+        )
+
+        # Mock eligibility check
+        mock_eligible.return_value = [self.voter.profile]
+
+        # User is logged in and eligible
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_vote", kwargs={"election_slug": future_election.slug})
+            + "?preview=true"
+        )
+
+        # Should show the voting page
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Preview Mode")
+        self.assertContains(response, "Future Election")
+
+    def test_results_not_visible_before_voting_closes(self):
+        """Results should not be visible until voting closes."""
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_results", kwargs={"election_slug": self.election.slug})
+        )
+
+        # Should redirect with error
+        self.assertEqual(response.status_code, 302)
+
+    def test_results_visible_after_voting_closes(self):
+        """Results should be visible after voting closes."""
+        # Create election with voting closed
+        now = timezone.now()
+        closed_election = Election.objects.create(
+            title="Closed Election",
+            membership_eligibility_deadline=now - timedelta(days=30),
+            nominations_open=now - timedelta(days=21),
+            nominations_close=now - timedelta(days=14),
+            voting_opens=now - timedelta(days=7),
+            voting_closes=now - timedelta(days=1),
+        )
+
+        self.client.force_login(self.voter)
+        response = self.client.get(
+            reverse("election_results", kwargs={"election_slug": closed_election.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Results")
