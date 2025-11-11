@@ -980,19 +980,15 @@ class OrganizerUserAdmin(UserAdmin):
         return qs
 
 
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
+organizer_admin.register(User, OrganizerUserAdmin)
+
+
 class DoNotEmailAdmin(admin.ModelAdmin):
     list_display = ["email", "reason", "created_at"]
     list_filter = ["reason", "created_at"]
     search_fields = ["email"]
     readonly_fields = ["created_at"]
-    list_display = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
-    list_filter = [
-        DistrictOrganizerUserFilter,
-    ] + list(BaseUserAdmin.list_filter)
 
-
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
-admin.site.register(ShirtOrder, ShirtOrderAdmin)
 admin.site.register(DoNotEmail, DoNotEmailAdmin)
-organizer_admin.register(User, OrganizerUserAdmin)
