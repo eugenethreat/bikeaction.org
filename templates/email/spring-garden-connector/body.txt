@@ -14,12 +14,11 @@ The City of Philadelphia is hosting an open house for the long-awaited  **Spring
   When:  <b>Wednesday, Nov. 19</b>  <br>
   What time:  <b>5-8 p.m.</b>  <br>
   Where:   <b>School District of Philadelphia Building</b>   <br>
-  440 N Broad St. Philadelphia, PA 19130
+  440 N Broad St. Philadelphia, PA 19130<br>
 </div>
 
 <div style="text-align: center">
 <a class="submit-button" href="https://bikeaction.org/events/spring-garden-connector-open-house-non-pba-event/">ADD TO CALENDAR</a><br>
-<small>(you will need to log in to your PBA account)</small>
 </div>
 
 The proposed project includes many excellent safety improvements, including:
