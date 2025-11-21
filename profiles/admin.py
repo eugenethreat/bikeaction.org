@@ -14,8 +14,42 @@ from email_log.models import Email
 
 from facets.models import District, RegisteredCommunityOrganization
 from membership.models import Membership
-from pbaabp.admin import ReadOnlyLeafletGeoAdminMixin
+from pbaabp.admin import ReadOnlyLeafletGeoAdminMixin, organizer_admin
 from profiles.models import DiscordActivity, DoNotEmail, Profile, ShirtOrder
+
+
+class DistrictOrganizerFilter(admin.SimpleListFilter):
+    title = "district organizer"
+    parameter_name = "is_organizer"
+
+    def lookups(self, request, model_admin):
+        return ((True, "Yes"), (False, "No"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "True":
+            return queryset.exclude(
+                organized_districts=None,
+            )
+        elif self.value() == "False":
+            return queryset.filter(organized_districts=None)
+        return queryset
+
+
+class DistrictOrganizerUserFilter(admin.SimpleListFilter):
+    title = "district organizer"
+    parameter_name = "is_organizer"
+
+    def lookups(self, request, model_admin):
+        return ((True, "Yes"), (False, "No"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "True":
+            return queryset.exclude(
+                profile__organized_districts=None,
+            )
+        elif self.value() == "False":
+            return queryset.filter(profile__organized_districts=None)
+        return queryset
 
 
 class ProfileCompleteFilter(admin.SimpleListFilter):
@@ -221,6 +255,13 @@ class DistrictFilter(admin.SimpleListFilter):
         return queryset
 
 
+class OrganizerDistrictFilter(DistrictFilter):
+    def lookups(self, request, model_amin):
+        return [
+            (f.id, f.name) for f in request.user.profile.organized_districts.all() if f.targetable
+        ]
+
+
 class RCOFilter(admin.SimpleListFilter):
     title = "RCOs (verified)"
     parameter_name = "rcos_verified"
@@ -253,6 +294,23 @@ class EmailHistory:
         return Email.objects.none()
 
 
+class OrganizerRCOFilter(RCOFilter):
+    def lookups(self, request, model_amin):
+        return [
+            (f.id, f.name)
+            for district in request.user.profile.organized_districts.all()
+            for f in district.intersecting_rcos.all()
+            if f.targetable
+        ]
+
+
+class OrganizesDistrictInline(admin.TabularInline):
+    model = District.organizers.through
+    verbose_name = "District"
+    verbose_name_plural = "Districts Organized"
+    extra = 0
+
+
 class ProfileAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
     list_display = [
         "_name",
@@ -265,9 +323,11 @@ class ProfileAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
         "emails_last_30_days",
         "created_at",
         "street_address",
+        "districts_organized",
     ]
     list_filter = [
         ProfileCompleteFilter,
+        DistrictOrganizerFilter,
         MemberFilter,
         MemberByDonationFilter,
         MemberByDiscordActivityFilter,
@@ -285,6 +345,7 @@ class ProfileAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
         "user__socialaccount__extra_data__username",
         "street_address",
     ]
+    inlines = [OrganizesDistrictInline]
     autocomplete_fields = ("user",)
 
     def get_queryset(self, request):
@@ -423,6 +484,11 @@ class ProfileAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
         )
 
     profile_complete.boolean = True
+
+    def districts_organized(self, obj=None):
+        if obj is None:
+            return ""
+        return ", ".join([d.name.lstrip("District ") for d in obj.organized_districts.all()])
 
     def apps_connected(self, obj=None):
         if obj is None:
@@ -762,6 +828,15 @@ class ProfileAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
         ),
     ]
 
+    def save_model(self, request, obj, form, change):
+        if change:
+            original_obj = type(obj).objects.get(pk=obj.pk)
+            original_value = getattr(original_obj, "location")
+            obj.location = original_value
+            form.cleaned_data["location"] = original_value
+
+        super().save_model(request, obj, form, change)
+
 
 @admin.action(description="Mark selected shirts as fulfilled")
 def make_fulfilled(modeladmin, request, queryset):
@@ -842,7 +917,44 @@ class ShirtOrderAdmin(ReadOnlyLeafletGeoAdminMixin, admin.ModelAdmin):
     actions = [csv_export, make_fulfilled]
 
 
+admin.site.register(ShirtOrder, ShirtOrderAdmin)
+
+
+class OrganizerProfileAdmin(ProfileAdmin):
+    autocomplete_fields = []
+    list_filter = [
+        ProfileCompleteFilter,
+        AppsConnectedFilter,
+        GeolocatedFilter,
+        OrganizerDistrictFilter,
+        OrganizerRCOFilter,
+    ]
+
+    def has_module_permission(self, request):
+        if request.user:
+            return request.user.profile.is_organizer
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        q_objects = Q()
+        for district in request.user.profile.organized_districts.all():
+            q_objects |= Q(location__within=district.mpoly)
+        qs = qs.filter(q_objects)
+        return qs
+
+
 admin.site.register(Profile, ProfileAdmin)
+organizer_admin.register(Profile, OrganizerProfileAdmin)
 
 
 class UserAdmin(BaseUserAdmin):
@@ -852,6 +964,37 @@ class UserAdmin(BaseUserAdmin):
     readonly_fields = ["profile"]
 
 
+class OrganizerUserAdmin(UserAdmin):
+    list_display = ["first_name", "last_name"]
+
+    def has_module_permission(self, request):
+        if request.user:
+            return request.user.profile.is_organizer
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        q_objects = Q()
+        for district in request.user.profile.organized_districts.all():
+            q_objects |= Q(profile__location__within=district.mpoly)
+        qs = qs.filter(q_objects)
+        return qs
+
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
+organizer_admin.register(User, OrganizerUserAdmin)
+
+
 class DoNotEmailAdmin(admin.ModelAdmin):
     list_display = ["email", "reason", "created_at"]
     list_filter = ["reason", "created_at"]
@@ -859,7 +1002,4 @@ class DoNotEmailAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
 
 
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
-admin.site.register(ShirtOrder, ShirtOrderAdmin)
 admin.site.register(DoNotEmail, DoNotEmailAdmin)
