@@ -75,6 +75,8 @@
       {% endfor %}
     </table>
   </div>
+  {% endif %}
+  {% if customer.has_any_active_subscription %}
   <p>{% translate "<b>Note:</b> changing from a monthly to yearly, or yearly to monthly donation will <i>immediately</i> charge you the new amount." %}</p>
   <p>{% translate "Changing the amount you donate alone will charge you the new amount the next time you are charged." %}<p>
   {% else %}
