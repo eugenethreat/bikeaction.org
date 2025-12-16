@@ -133,8 +133,16 @@
       </div>
       {% endif %}
       {% if petition.signatures.all %}
-      <div class="fade-transition" hx-get="{% url 'petition_signatures' petition_slug_or_id=petition.id %}" hx-trigger="every 10s" hx-swap="innerHTML transition:true">
+      <div id="signatures-container-{{ petition.id }}">
         {% include 'campaigns/_partial_signatures.html' %}
+      </div>
+      <div id="signature-poller-{{ petition.id }}"
+           hx-get="{% url 'petition_signatures' petition_slug_or_id=petition.id %}"
+           hx-trigger="every 10s"
+           hx-target="#signature-cards-{{ petition.id }}"
+           hx-swap="afterbegin"
+           hx-vals='js:{"since": window.signatureTimestamps?.["{{ petition.id }}"] || (Date.now()/1000)}'
+           hx-on::after-request="window.signatureTimestamps = window.signatureTimestamps || {}; window.signatureTimestamps['{{ petition.id }}'] = Date.now()/1000;">
       </div>
       {% endif %}
     {% endfor %}

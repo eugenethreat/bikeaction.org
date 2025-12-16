@@ -1,0 +1,27 @@
+{% load humanize i18n %}
+{# OOB swap for the signature count header #}
+<span id="signature-count-{{ petition.id }}" hx-swap-oob="true">{{ petition.signatures.count }} Submissions{% if petition.campaign.status == "active" %} So Far!{% endif %}</span>
+
+{# OOB swap for the comment count and header visibility #}
+<span id="comment-count-{{ petition.id }}" hx-swap-oob="true">{% blocktrans %}{{ petition.comments }} Comments{% endblocktrans %}</span>
+{% if petition.signatures_with_comment %}
+<h3 id="comment-header-{{ petition.id }}" hx-swap-oob="true"><span id="comment-count-{{ petition.id }}">{% blocktrans %}{{ petition.comments }} Comments{% endblocktrans %}</span></h3>
+<p id="comment-intro-{{ petition.id }}" hx-swap-oob="true">{% translate "Recent comments..." %}</p>
+{% endif %}
+
+{# OOB swap for the progress bar #}
+{% if petition.signature_goal %}
+<div id="signature-progress-{{ petition.id }}" hx-swap-oob="true" class="progress-bar" style="height: 2em; width: {{ petition.progress }}%"></div>
+{% endif %}
+
+{# New signature cards to prepend to the list #}
+{% for signature in new_signatures %}
+{% if signature.comment and signature.visible %}
+<div class="signature-card{% if signature.featured %} feature featuredd{% endif %}">
+  <blockquote>
+    <p>"{{ signature.comment }}"</p>
+    <footer>-{{ signature.first_name }} {{ signature.last_name|make_list|slice:':1'|join:'' }}. <i class="timeago" datetime="{{ signature.created_at|date:'c' }}">{{ signature.created_at|naturaltime }}</i></footer>
+  </blockquote>
+</div>
+{% endif %}
+{% endfor %}

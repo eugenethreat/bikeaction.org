@@ -2,23 +2,23 @@
 
 {% if petition.show_submissions and petition.signatures.all %}
 <div class="signatures">
-  <h2>{{ petition.signatures.count }} Submissions{% if petition.campaign.status == "active" %} So Far!{% endif %}</h2>
+  <h2><span id="signature-count-{{ petition.id }}">{{ petition.signatures.count }} Submissions{% if petition.campaign.status == "active" %} So Far!{% endif %}</span></h2>
   {% if petition.signature_goal %}
   <div class="progress-bar-container">
-    <div class="progress-bar" style="height: 2em; width: {{ petition.progress }}%">
+    <div id="signature-progress-{{ petition.id }}" class="progress-bar" style="height: 2em; width: {{ petition.progress }}%">
     </div>
     <span class="progress-goal">{{ petition.signature_goal }}</span>
   </div>
   {% endif %}
-  {% if petition.signatures_with_comment %}
-  <h3>{% blocktrans %}{{ petition.comments }} Comments{% endblocktrans %}</h3>
-  <p>{% translate "Recent comments..." %}</p>
+  <h3 id="comment-header-{{ petition.id }}"{% if not petition.signatures_with_comment %} style="display:none"{% endif %}><span id="comment-count-{{ petition.id }}">{% blocktrans %}{{ petition.comments }} Comments{% endblocktrans %}</span></h3>
+  <p id="comment-intro-{{ petition.id }}"{% if not petition.signatures_with_comment %} style="display:none"{% endif %}>{% translate "Recent comments..." %}</p>
+  <div id="signature-cards-{{ petition.id }}">
   {% for signature in petition.distinct_signatures_with_comment|dictsortreversed:"created_at" %}
   {% if signature.comment and signature.featured and signature.visible %}
   <div class="signature-card feature featuredd">
     <blockquote>
       <p>"{{ signature.comment }}"</p>
-      <footer>-{{ signature.first_name }} {{ signature.last_name|make_list|slice:':1'|join:'' }}. <i>{{ signature.created_at|naturaltime }}</i></footer>
+      <footer>-{{ signature.first_name }} {{ signature.last_name|make_list|slice:':1'|join:'' }}. <i class="timeago" datetime="{{ signature.created_at|date:'c' }}">{{ signature.created_at|naturaltime }}</i></footer>
     </blockquote>
   </div>
   {% endif %}
@@ -28,11 +28,49 @@
   <div class="signature-card">
     <blockquote>
       <p>"{{ signature.comment }}"</p>
-      <footer>-{{ signature.first_name }} {{ signature.last_name|make_list|slice:':1'|join:'' }}. <i>{{ signature.created_at|naturaltime }}</i></footer>
+      <footer>-{{ signature.first_name }} {{ signature.last_name|make_list|slice:':1'|join:'' }}. <i class="timeago" datetime="{{ signature.created_at|date:'c' }}">{{ signature.created_at|naturaltime }}</i></footer>
     </blockquote>
   </div>
   {% endif %}
   {% endfor %}
-  {% endif %}
+  </div>
 </div>
+<script>
+(function() {
+  window.updateTimeago = function() {
+    document.querySelectorAll('.timeago[datetime]').forEach(function(el) {
+      var dt = new Date(el.getAttribute('datetime'));
+      var now = new Date();
+      var seconds = Math.floor((now - dt) / 1000);
+      var text;
+      if (seconds < 10) {
+        text = 'now';
+      } else if (seconds < 60) {
+        text = seconds + ' seconds ago';
+      } else if (seconds < 120) {
+        text = 'a minute ago';
+      } else if (seconds < 3600) {
+        text = Math.floor(seconds / 60) + ' minutes ago';
+      } else if (seconds < 7200) {
+        text = 'an hour ago';
+      } else if (seconds < 86400) {
+        text = Math.floor(seconds / 3600) + ' hours ago';
+      } else if (seconds < 172800) {
+        text = 'a day ago';
+      } else if (seconds < 604800) {
+        text = Math.floor(seconds / 86400) + ' days ago';
+      } else if (seconds < 1209600) {
+        text = 'a week ago';
+      } else if (seconds < 2592000) {
+        text = Math.floor(seconds / 604800) + ' weeks ago';
+      } else {
+        text = dt.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: 'numeric'});
+      }
+      el.textContent = text;
+    });
+  };
+  window.updateTimeago();
+  document.body.addEventListener('htmx:afterSwap', window.updateTimeago);
+})();
+</script>
 {% endif %}

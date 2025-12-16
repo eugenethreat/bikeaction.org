@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from urllib.parse import quote, urlencode
 
 from django.conf import settings
@@ -40,6 +42,31 @@ def petition_signatures(request, petition_slug_or_id):
     petition = _fetch_petition_by_slug_or_id(petition_slug_or_id)
     if petition is None:
         raise Http404
+
+    since_param = request.GET.get("since")
+    if since_param:
+        # Incremental update: return only new signatures since timestamp
+        try:
+            since_ts = float(since_param)
+            since_dt = datetime.fromtimestamp(since_ts, tz=dt_timezone.utc)
+        except (ValueError, OSError):
+            raise Http404
+
+        new_signatures = petition.signatures.filter(
+            created_at__gt=since_dt, visible=True
+        ).order_by("-created_at")
+
+        # Return signature cards + OOB updates for count/progress
+        return render(
+            request,
+            "campaigns/_partial_signatures_update.html",
+            {
+                "petition": petition,
+                "new_signatures": new_signatures,
+            },
+        )
+
+    # Full render on initial load
     return render(request, "campaigns/_partial_signatures.html", {"petition": petition})
 
 

@@ -1033,16 +1033,6 @@ body {
   background: rgba(216,16,125,.25);
 }
 
-.fade-transition.htmx-swapping {
-  opacity: 0;
-  transition: opacity 1s ease-out;
-  -webkit-transition: opacity 1s ease-out;
-  -webkit-transition-timing-function: ease;
-  -webkit-transition-duration: 1s;
-  -webkit-transition-property: opacity;
-}
-
-
 .release-text {
   font-family: monospace;
   font-size: 1.25em;
