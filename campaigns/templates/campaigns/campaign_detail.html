@@ -113,7 +113,6 @@
     {% with share_url=request.build_absolute_uri %}
     {% with share_title=campaign.call_to_action|default_if_none:"Take Action Now"|add:" "|add:campaign.title %}
     <span class="calendar-share">{% post_to_reddit  share_title share_url "<i class=\"fa-brands fa-reddit\"></i> Reddit" %}</span>
-    <span class="calendar-share">{% post_to_twitter share_title share_url "<i class=\"fa-brands fa-twitter\"></i> Twitter" %}</span>
     <span class="calendar-share">{% post_to_bluesky share_title share_url "<i class=\"fa-brands fa-bluesky\"></i> Bluesky" %}</span>
     <span class="calendar-share"><a href="{% qr_url_from_text share_url image_format='png' %}" download="qr-code-{{ event.slug }}.png"><i class="fa-solid fa-qrcode"></i> QR Code</a></span>
     {% endwith %}
