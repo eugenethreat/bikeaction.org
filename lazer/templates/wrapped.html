@@ -339,6 +339,33 @@
   </div>
   {% endif %}
 
+  {% if wrapped.top_user_vehicles %}
+  <div class="stat-card highlight">
+    <h2>Your Top Reported Vehicles</h2>
+    <ul class="violation-list">
+      {% for item in wrapped.top_user_vehicles %}
+      <li>
+        <span>{{ item.vehicle }}</span>
+        <span class="count">{{ item.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if wrapped.top_community_vehicles %}
+    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+      <h3 style="font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; opacity: 0.9;">Community Top 3</h3>
+      <ul class="violation-list" style="font-size: 0.9em; opacity: 0.85;">
+        {% for item in wrapped.top_community_vehicles %}
+        <li>
+          <span>{{ item.vehicle }}</span>
+          <span class="count">{{ item.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {% if wrapped.violations_by_type %}
   <div class="stat-card">
     <h2>Violations by Type</h2>
