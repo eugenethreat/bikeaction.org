@@ -11,13 +11,12 @@
       .signature {
         border: 1px solid grey;
         border-radius: 1em;
-        break-inside: avoid-page;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin-bottom: .5em;
       }
       .signer td {
         padding: .5em;
-      }
-      .separator {
-        height: .5em;
       }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,19 +28,19 @@
       <span style="padding: 1em; width: 33%;"><a href="https://bikeaction.org/"><img src="{% static 'images/pba-logo-pink.svg' %}"        style="width: 100%; vertical-align: middle;"></a></span>
       <!--<span style="padding: 1em; width: 33%;"><a href="https://www.5thsq.org/"><img src="{% static 'images/logos/logo-5th-square.png' %}" style="width: 100%; vertical-align: middle;"></a></span>-->
     </div>
-    {% for petition, signatures in petitions.items %}
+    {% for petition, data in petitions.items %}
     <div>
       <h1>{{ petition.title }}</h1>
     </div>
     <blockquote>{{ petition.letter }}</blockquote>
     <hr>
     <table>
-      {% for signature in signatures %}
+      {% for signature in data.signatures %}
         {% if signature.district %}
           <tbody class="signature">
             <tr class="signer">
               <td>{{ signature.first_name }} {{ signature.last_name }}</td>
-              <td>{{ signature.postal_address_line_1 }}, {{ signature.city }} {{ signature.state }} {{ signature.zip_code }}</td>
+              <td>{% if signature.postal_address_line_1 %}{{ signature.postal_address_line_1 }}{% endif %}{% if signature.city %}{% if signature.postal_address_line_1 %}, {% endif %}{{ signature.city }}{% endif %}{% if signature.state %} {{ signature.state }}{% endif %}{% if signature.zip_code %} {{ signature.zip_code }}{% endif %}</td>
             </tr>
             {% if signature.comment and signature.visible %}
             <tr class="comment">
@@ -49,12 +48,21 @@
             </tr>
             {% endif %}
           </tbody>
-          {% if not forloop.last %}
-          <tr class="separator"></tr>
-          {% endif %}
         {% endif %}
       {% endfor %}
     </table>
+    <div style="page-break-before: always; margin: 1em 0; padding: 1em; background: #f5f5f5; border-radius: 0.5em;">
+      <h3 style="margin-top: 0;">Signature Report</h3>
+      <p><strong>Total Signatures:</strong> {{ data.total_count }}</p>
+      {% if data.district_counts %}
+      <p><strong>By District:</strong></p>
+      <ul style="margin: 0;">
+        {% for district, count in data.district_counts.items %}
+        <li>{{ district }}: {{ count }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
     {% endfor %}
   </body>
 </html>

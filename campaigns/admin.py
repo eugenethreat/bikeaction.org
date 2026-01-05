@@ -35,7 +35,7 @@ class CampaignAdmin(OrderedModelAdmin):
 def pretty_report(modeladmin, request, queryset):
     _petitions = {}
     for petition in queryset:
-        _petitions[petition] = sorted(
+        signatures = sorted(
             list(petition.signatures.order_by("email").distinct("email").all()),
             key=lambda x: x.created_at,
         )
