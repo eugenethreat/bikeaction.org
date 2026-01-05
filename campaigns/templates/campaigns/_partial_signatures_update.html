@@ -1,6 +1,6 @@
 {% load humanize i18n %}
 {# OOB swap for the signature count header #}
-<span id="signature-count-{{ petition.id }}" hx-swap-oob="true">{{ petition.signatures.count }} Submissions{% if petition.campaign.status == "active" %} So Far!{% endif %}</span>
+<span id="signature-count-{{ petition.id }}" hx-swap-oob="true">{{ petition.signature_count }} Signatures{% if petition.campaign.status == "active" %} So Far!{% endif %}</span>
 
 {# OOB swap for the comment count and header visibility #}
 <span id="comment-count-{{ petition.id }}" hx-swap-oob="true">{% blocktrans %}{{ petition.comments }} Comments{% endblocktrans %}</span>

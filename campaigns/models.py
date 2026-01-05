@@ -187,15 +187,19 @@ class Petition(models.Model):
         )
 
     @property
+    def signature_count(self):
+        return self.signatures.distinct("email").count()
+
+    @property
     def comments(self):
         return self.signatures.filter(comment__isnull=False).exclude(comment="").count()
 
     @property
     def progress(self):
         if self.signature_goal:
-            if self.signatures.count() > self.signature_goal:
+            if self.signature_count > self.signature_goal:
                 return 100
-            return int(100 * (self.signatures.count() / self.signature_goal))
+            return int(100 * (self.signature_count / self.signature_goal))
         return 100
 
     def __str__(self):

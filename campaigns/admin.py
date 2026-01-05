@@ -39,6 +39,20 @@ def pretty_report(modeladmin, request, queryset):
             list(petition.signatures.order_by("email").distinct("email").all()),
             key=lambda x: x.created_at,
         )
+        district_counts = {}
+        for district in District.objects.all():
+            cnt = (
+                petition.signatures.filter(location__within=district.mpoly)
+                .distinct("email")
+                .count()
+            )
+            if cnt > 0:
+                district_counts[district.name] = cnt
+        _petitions[petition] = {
+            "signatures": signatures,
+            "total_count": len(signatures),
+            "district_counts": district_counts,
+        }
     return render(request, "petition_signatures_pretty_report.html", {"petitions": _petitions})
 
 
