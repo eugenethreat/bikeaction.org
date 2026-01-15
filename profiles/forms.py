@@ -41,6 +41,7 @@ class BaseProfileSignupForm(BaseSignupForm):
         required=False,
         label=_("Pronouns"),
         widget=PronounsWidget(),
+        help_text=Profile._meta.get_field("pronouns").help_text,
     )
     street_address = forms.CharField(
         max_length=256,
@@ -157,6 +158,7 @@ class ProfileUpdateForm(forms.ModelForm):
         required=False,
         label=_("Pronouns"),
         widget=PronounsWidget(),
+        help_text=Profile._meta.get_field("pronouns").help_text,
     )
     email = forms.EmailField(
         disabled=True,

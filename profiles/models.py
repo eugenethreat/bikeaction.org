@@ -31,6 +31,7 @@ class Profile(models.Model):
         null=True,
         blank=False,
         verbose_name=_("Pronouns"),
+        help_text="Select from recommendations, or type your own.",
     )
 
     street_address = models.CharField(
