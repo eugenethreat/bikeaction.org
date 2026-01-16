@@ -26,6 +26,14 @@ class Profile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     user = models.OneToOneField(User, related_name="profile", on_delete=models.CASCADE)
 
+    pronouns = models.CharField(
+        max_length=64,
+        null=True,
+        blank=False,
+        verbose_name=_("Pronouns"),
+        help_text="Select from recommendations, or type your own.",
+    )
+
     street_address = models.CharField(
         max_length=256,
         null=True,
