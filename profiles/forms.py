@@ -14,14 +14,14 @@ class PronounsWidget(forms.TextInput):
     """Text input with datalist for common pronoun suggestions"""
 
     def __init__(self, attrs=None):
-        default_attrs = {'list': 'pronouns-list'}
+        default_attrs = {"list": "pronouns-list"}
         if attrs:
             default_attrs.update(attrs)
         super().__init__(attrs=default_attrs)
 
     def render(self, name, value, attrs=None, renderer=None):
         text_input = super().render(name, value, attrs, renderer)
-        datalist = '''
+        datalist = """
         <datalist id="pronouns-list">
           <option value="she/her">
           <option value="he/him">
@@ -30,7 +30,7 @@ class PronounsWidget(forms.TextInput):
           <option value="he/they">
           <option value="any">
         </datalist>
-        '''
+        """
         return mark_safe(text_input + datalist)
 
 
