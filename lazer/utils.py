@@ -14,17 +14,31 @@ from django.utils import timezone
 from PIL import Image, ImageDraw
 
 
-def detect_faces(image_bytes):
+def detect_faces(image_bytes, max_dimension=1920):
     """
     Detect faces in an image using OpenCV Haar cascades.
 
+    Args:
+        image_bytes: Raw image bytes
+        max_dimension: Maximum width or height for processing (to limit memory usage)
+
     Returns:
-        List of dicts with xmin, ymin, xmax, ymax keys
+        List of dicts with xmin, ymin, xmax, ymax keys (in original image coordinates)
     """
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None:
         return []
+
+    original_height, original_width = img.shape[:2]
+    scale = 1.0
+
+    # Downsample if image is too large to prevent memory issues
+    if max(original_width, original_height) > max_dimension:
+        scale = max_dimension / max(original_width, original_height)
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+        img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(
@@ -32,8 +46,14 @@ def detect_faces(image_bytes):
     )
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
+    # Scale coordinates back to original image size
     return [
-        {"xmin": int(x), "ymin": int(y), "xmax": int(x + w), "ymax": int(y + h)}
+        {
+            "xmin": int(x / scale),
+            "ymin": int(y / scale),
+            "xmax": int((x + w) / scale),
+            "ymax": int((y + h) / scale),
+        }
         for (x, y, w, h) in faces
     ]
 
