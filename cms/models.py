@@ -12,7 +12,7 @@ from wagtail.blocks import (
     RawHTMLBlock,
     RichTextBlock,
     StreamBlock,
-    StructBlock
+    StructBlock,
 )
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.contrib.table_block.blocks import TableBlock
@@ -203,17 +203,10 @@ class CollapsibleHeader(StructBlock):
     """
     Defined header text followed by potential media content that can be toggled.
     """
-    header_types = [
-        ("h1", "Header 1"),
-        ("h2", "Header 2"),
-        ("h3", "Header 3"),
-        ("h4", "Header 4")
-    ]
 
-    title_header = ChoiceBlock(
-        choices=header_types,
-        default="h1"
-    )
+    header_types = [("h1", "Header 1"), ("h2", "Header 2"), ("h3", "Header 3"), ("h4", "Header 4")]
+
+    title_header = ChoiceBlock(choices=header_types, default="h1")
 
     title = CharBlock()
 
@@ -223,13 +216,14 @@ class CollapsibleHeader(StructBlock):
             ("paragraph", AlignedParagraphBlock(features=_features)),
             ("html", RawHTMLBlock()),
             ("table", TableBlock(table_options=table_options)),
-            ("display_card_block", DisplayCardsBlock())
+            ("display_card_block", DisplayCardsBlock()),
         ],
-        use_json_field=True
+        use_json_field=True,
     )
 
     class Meta:
         template = "blocks/collapsible_header.html"
+
 
 class CmsStreamPage(Page):
 
@@ -243,7 +237,7 @@ class CmsStreamPage(Page):
             ("table", TableBlock(table_options=table_options)),
             ("newsletter_signup", NewsletterSignupBlock()),
             ("display_card_block", DisplayCardsBlock()),
-            ("collapsible_header", CollapsibleHeader())
+            ("collapsible_header", CollapsibleHeader()),
         ],
         use_json_field=True,
     )
