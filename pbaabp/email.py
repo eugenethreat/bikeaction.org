@@ -11,6 +11,8 @@ from django.template.loader import get_template
 
 from profiles.models import DoNotEmail
 
+EMAIL_IMAGE_PATH = "templates/email"
+
 HEADER = """
     <div class="email-header">
       <a href="https://bikeaction.org/"
@@ -79,8 +81,6 @@ def template_from_string(template_string, using=None):
     using a given template engine or using the default backends
     from settings.TEMPLATES if no engine was specified.
     """
-    # This function is based on django.template.loader.get_template,
-    # but uses Engine.from_string instead of Engine.get_template.
     chain = []
     engine_list = engines.all() if using is None else [engines[using]]
     for engine in engine_list:
@@ -89,6 +89,38 @@ def template_from_string(template_string, using=None):
         except TemplateSyntaxError as e:
             chain.append(e)
     raise TemplateSyntaxError(chain)
+
+
+def _build_email_soup(message):
+    html = markdown.markdown(message)
+    html = HEADER + '<div class="content">' + html + "</div>" + FOOTER
+    return BeautifulSoup(html, "html.parser")
+
+
+def _inline_css_and_wrap(soup):
+    inliner = pynliner.Pynliner().from_string(str(soup))
+    with open(os.path.join(os.path.dirname(__file__), "email.css")) as css:
+        inliner = inliner.with_cssString(css.read())
+    html = inliner.run()
+
+    return (
+        '<table border="0" cellspacing="0" width="100%"><tr><td></td><td width="600">'
+        + html
+        + "</td><td></td></tr></table>"
+    )
+
+
+def render_email_html(message, for_preview=False):
+    soup = _build_email_soup(message)
+
+    if for_preview:
+        for img in soup.findAll("img"):
+            src = img.get("src", "")
+            if src.startswith(EMAIL_IMAGE_PATH):
+                filename = os.path.basename(src)
+                img["src"] = f"/email-draft/image/{filename}"
+
+    return _inline_css_and_wrap(soup)
 
 
 def send_email_message(
@@ -163,10 +195,7 @@ def send_email_message(
     else:
         message = template_from_string(message).render(context)
 
-    html = markdown.markdown(message)
-    html = HEADER + '<div class="content">' + html + "</div>" + FOOTER
-
-    soup = BeautifulSoup(html, "html")
+    soup = _build_email_soup(message)
 
     mail = EmailMultiAlternatives(
         subject,
@@ -181,17 +210,8 @@ def send_email_message(
         cid = attach_inline_image_file(mail, img["src"])
         img["src"] = "cid:" + cid
 
-    inliner = pynliner.Pynliner().from_string(str(soup))
-    with open(os.path.join(os.path.dirname(__file__), "email.css")) as css:
-        inliner = inliner.with_cssString(css.read())
-    html = inliner.run()
-
-    mail.attach_alternative(
-        '<table border="0" cellspacing="0" width="100%"><tr><td></td><td width="600">'
-        + html
-        + "</td><td></td></tr></table>",
-        "text/html",
-    )
+    html = _inline_css_and_wrap(soup)
+    mail.attach_alternative(html, "text/html")
 
     if attachments is not None:
         for attachment in attachments:
