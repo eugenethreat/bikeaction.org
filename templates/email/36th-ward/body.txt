@@ -1,0 +1,22 @@
+Hello {{ first_name }},
+
+<i><small>You are receiving this email because you have a <a href="https://bikeaction.org">Philly Bike Action</a> account and you live within the boundaries of the 36th Ward in Point Breeze.</small></i>
+
+PBA organizers in Point Breeze are looking for involved neighbors to run for committeeperson (“CP”) in the 36th Ward (see boundaries below).
+
+<div style="width: 100%; text-align: center;">
+  <figure style="width: 80%">
+    <img style="width: 100%" src="templates/email/36th-ward/ward-36.png">
+    <figcaption>Philadelphia 36th Ward</figcaption>
+  </figure>
+</div>
+
+Why run? With enough CPs, we can ask 36th Ward Leader and Council President Kenyatta Johnson to pursue infrastructure changes like bike lanes, daylighting, and traffic calming. 
+
+**Please reply to this email by Sunday, Feb. 1 to indicate your interest.** The responses we receive will determine our next steps (zoom call, coffee chat, something else). **No commitment is necessary at this time.** 
+
+We can answer any questions you may have about running for and serving as a CP. In the meantime, this [handbook](https://seventy.org/uploads/attachments/ckz761n1l2lkl5onp30pivvui-how-to-run-for-committee-person-handbook-last-updated-01-24-22.pdf) from the good government group Committee of 70 may be helpful. 
+
+Thanks for being a supporter, and stay warm\!
+
+**Philly Bike Action**
