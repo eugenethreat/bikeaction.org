@@ -11,6 +11,7 @@ from wagtail.blocks import (
     ChoiceBlock,
     RawHTMLBlock,
     RichTextBlock,
+    StreamBlock,
     StructBlock,
 )
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
@@ -198,6 +199,32 @@ class FullSlugFieldPanel(FieldPanel):
             return "must set a slug and save first"
 
 
+class CollapsibleHeader(StructBlock):
+    """
+    Defined header text followed by potential media content that can be toggled.
+    """
+
+    header_types = [("h1", "Header 1"), ("h2", "Header 2"), ("h3", "Header 3"), ("h4", "Header 4")]
+
+    title_header = ChoiceBlock(choices=header_types, default="h1")
+
+    title = CharBlock()
+
+    body = StreamBlock(
+        [
+            ("card", CardBlock(features=_features)),
+            ("paragraph", AlignedParagraphBlock(features=_features)),
+            ("html", RawHTMLBlock()),
+            ("table", TableBlock(table_options=table_options)),
+            ("display_card_block", DisplayCardsBlock()),
+        ],
+        use_json_field=True,
+    )
+
+    class Meta:
+        template = "blocks/collapsible_header.html"
+
+
 class CmsStreamPage(Page):
 
     show_title = models.BooleanField(default=True)
@@ -210,6 +237,7 @@ class CmsStreamPage(Page):
             ("table", TableBlock(table_options=table_options)),
             ("newsletter_signup", NewsletterSignupBlock()),
             ("display_card_block", DisplayCardsBlock()),
+            ("collapsible_header", CollapsibleHeader()),
         ],
         use_json_field=True,
     )
