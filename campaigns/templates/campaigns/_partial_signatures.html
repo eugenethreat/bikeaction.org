@@ -5,7 +5,8 @@
   <h2><span id="signature-count-{{ petition.id }}">{{ petition.signature_count }} Signatures{% if petition.campaign.status == "active" %} So Far!{% endif %}</span></h2>
   {% if petition.signature_goal %}
   <div class="progress-bar-container">
-    <div id="signature-progress-{{ petition.id }}" class="progress-bar" style="height: 2em; width: {{ petition.progress }}%">
+    <div id="signature-progress-{{ petition.id }}" class="progress-bar" style="height: 2em;">
+      <div class="progress-bar-fill" style="width: {{ petition.progress }}%"></div>
     </div>
     <span class="progress-goal">{{ petition.signature_goal }}</span>
   </div>
