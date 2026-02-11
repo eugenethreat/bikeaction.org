@@ -40,8 +40,6 @@ class Campaign(OrderedModel):
     call_to_action = models.CharField(max_length=64, null=True, blank=True)
     call_to_action_header = models.BooleanField(default=True)
 
-    update = models.TextField(null=True, blank=True)
-
     donation_action = models.BooleanField(default=False)
     donation_product = models.ForeignKey(
         DonationProduct,
@@ -60,6 +58,8 @@ class Campaign(OrderedModel):
 
     content = MarkdownField(rendered_field="content_rendered", validator=VALIDATOR_NULL)
     content_rendered = RenderedMarkdownField()
+
+    update = models.TextField(null=True, blank=True)
 
     wordpress_id = models.CharField(max_length=64, null=True, blank=True)
 
