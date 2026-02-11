@@ -55,7 +55,7 @@
       {% if campaign.cover %}<img class="campaign-card-img" src="{{ campaign.cover|thumbnail_url:'small' }}">{% endif %}
       <i>{{ campaign.created_at|date:"F Y" }} </i>
       <p>
-        {% if campaign.status == "past" %}
+        {% if campaign.status == "past" and campaign.update %}
         <p><b>UPDATE:</b> {{ campaign.update }}</p>
         {% endif %}
         {{ campaign.description }}</p>
