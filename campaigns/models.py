@@ -22,7 +22,7 @@ class Campaign(OrderedModel):
     class Status(models.TextChoices):
         DRAFT = "draft"
         ACTIVE = "active"
-        COMPLETED = "completed"
+        COMPLETED = "past"
         CANCELED = "canceled"
         SUSPENDED = "suspended"
         UNKNOWN = "unknown"
@@ -39,6 +39,9 @@ class Campaign(OrderedModel):
     cover = models.ImageField(upload_to="campaigns", null=True, blank=True)
     call_to_action = models.CharField(max_length=64, null=True, blank=True)
     call_to_action_header = models.BooleanField(default=True)
+
+    # A field for an update once a campaign has been completed
+    update = models.TextField(default="Campaign complete!")
 
     donation_action = models.BooleanField(default=False)
     donation_product = models.ForeignKey(
